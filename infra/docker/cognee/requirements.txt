@@ -1,0 +1,9 @@
+cognee[postgres]==0.3.2
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+psycopg2-binary==2.9.10
+pydantic==2.9.0
+pydantic-settings==2.4.0
+httpx==0.27.0
+python-dotenv==1.0.1
+tenacity==8.3.1

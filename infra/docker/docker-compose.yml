@@ -1,0 +1,198 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # PostgreSQL with pgvector extension
+  # ============================================================================
+  postgres:
+    image: pgvector/pgvector:pg16-latest
+    container_name: cognee_postgres
+    environment:
+      POSTGRES_USER: cognee_user
+      POSTGRES_PASSWORD: cognee_password_dev
+      POSTGRES_DB: cognee_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cognee_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agentic
+
+  # ============================================================================
+  # Redis Stack (vector cache + session memory)
+  # ============================================================================
+  redis:
+    image: redis/redis-stack:latest
+    container_name: cognee_redis
+    environment:
+      REDIS_PASSWORD: redis_password_dev
+    ports:
+      - "6379:6379"
+      - "8001:8001"  # Redis Insight UI
+    volumes:
+      - redis_data:/data
+    command: redis-server --requirepass redis_password_dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agentic
+
+  # ============================================================================
+  # Ollama (LLM + Embeddings - local, fallback)
+  # ============================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cognee_ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agentic
+    # Pre-pull models on startup (optional, takes time on first run)
+    # command: ollama pull llama2 && ollama pull nomic-embed-text
+
+  # ============================================================================
+  # LiteLLM Proxy (Embeddings + LLM routing: Gemini primary + Ollama fallback)
+  # ============================================================================
+  litellm:
+    image: litellm/litellm:latest
+    container_name: cognee_litellm
+    ports:
+      - "8000:8000"
+    environment:
+      - LITELLM_MASTER_KEY=sk-litellm-dev-key
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key-here}
+      - LOG_LEVEL=debug
+    volumes:
+      - ./litellm_config.yml:/app/config.yml:ro
+    command: litellm --config /app/config.yml --port 8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - agentic
+    profiles:
+      - full  # Run with: docker-compose --profile full up
+
+  # ============================================================================
+  # Cognee API Service (Shared Knowledge Service)
+  # ============================================================================
+  cognee:
+    build:
+      context: ./cognee
+      dockerfile: Dockerfile
+    container_name: cognee_api
+    ports:
+      - "8080:8000"
+    environment:
+      # Database
+      COGNEE_DB_HOST: postgres
+      COGNEE_DB_PORT: 5432
+      COGNEE_DB_NAME: cognee_db
+      COGNEE_DB_USER: cognee_user
+      COGNEE_DB_PASSWORD: cognee_password_dev
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis_password_dev
+      REDIS_DB: 0
+      # LiteLLM (Gemini primary + Ollama fallback)
+      LITELLM_URL: http://litellm:8000
+      LITELLM_API_KEY: sk-litellm-dev-key
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-your-gemini-api-key-here}
+      # Cognee SDK
+      COGNEE_MAX_CHUNK_SIZE: 2000
+      COGNEE_BATCH_SIZE: 50
+      COGNEE_TIMEOUT: 300
+      LOG_LEVEL: DEBUG
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      litellm:
+        condition: service_started
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./cognee:/app
+    command: python -m uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - agentic
+
+  # ============================================================================
+  # CEO Visibility Agent Service (Agno + Firestore + Cognee)
+  # ============================================================================
+  ceo-agent:
+    build:
+      context: ../../agents/ceo-visibility
+      dockerfile: Dockerfile
+    container_name: ceo_agent
+    ports:
+      - "8081:8000"
+    environment:
+      # Cognee API
+      COGNEE_API_URL: http://cognee:8000
+      # LiteLLM (Gemini primary + Ollama fallback)
+      LITELLM_URL: http://litellm:8000
+      LITELLM_API_KEY: sk-litellm-dev-key
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-your-gemini-api-key-here}
+      # Redis (agent session memory)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis_password_dev
+      REDIS_DB: 1
+      # PostgreSQL (agent chat history)
+      DATABASE_URL: postgresql://cognee_user:cognee_password_dev@postgres:5432/agent_db
+      # Agent config
+      AGENT_NAME: ceo-visibility-agent
+      AGENT_MODEL: gemini-flash
+      LOG_LEVEL: DEBUG
+    depends_on:
+      cognee:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      litellm:
+        condition: service_started
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ../../agents/ceo-visibility:/app
+    command: python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - agentic
+
+networks:
+  agentic:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local

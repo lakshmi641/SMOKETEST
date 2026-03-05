@@ -1,0 +1,81 @@
+# LiteLLM Configuration - Gemini Primary + Ollama Fallback
+# ============================================================================
+# Primary: Gemini 2.0 Flash (fast, good tool-calling, cost-efficient)
+# Fallback: Ollama llama2 (free, self-hosted, automatic fallback on Gemini failure)
+# Embeddings: Ollama nomic-embed-text (always local, fast, free)
+# ============================================================================
+
+model_list:
+  # ============================================================================
+  # Primary LLM: Gemini 2.0 Flash
+  # ============================================================================
+  - model_name: "gemini-flash"
+    litellm_params:
+      model: "gemini/gemini-2.0-flash"
+      api_key: ${GEMINI_API_KEY}
+      timeout: 300
+      max_retries: 1
+    router_settings:
+      priority: 100  # Highest priority - try first
+
+  # ============================================================================
+  # Fallback LLM: Ollama Llama2 (free, local)
+  # ============================================================================
+  - model_name: "local-llama"
+    litellm_params:
+      model: "ollama/llama2"
+      base_url: "http://ollama:11434"
+      timeout: 300
+      max_retries: 2
+    router_settings:
+      priority: 10  # Lower priority - try if Gemini fails
+
+  # ============================================================================
+  # Embeddings: Ollama Nomic Embed Text (always local, 768d)
+  # ============================================================================
+  - model_name: "nomic-embed-text"
+    litellm_params:
+      model: "ollama/nomic-embed-text"
+      base_url: "http://ollama:11434"
+      timeout: 60
+    router_settings:
+      priority: 100  # Always use local embeddings
+
+# ============================================================================
+# Router Settings (Automatic Fallback)
+# ============================================================================
+router_settings:
+  # Redis for caching + routing state
+  redis_host: "redis"
+  redis_port: 6379
+  redis_password: "redis_password_dev"
+  
+  # Routing strategy: routes to highest priority model, falls back if it fails
+  routing_strategy: "priority"
+  
+  # If primary fails, automatically fallback
+  fallback_routes:
+    - model_name: "local-llama"      # Fallback to Ollama
+      weight: 1
+
+  # Fallback timeout (how long to wait before trying next route)
+  fallback_timeout: 30
+
+  # Logging config
+  log_failed_requests: true
+  log_model_call: true
+
+# ============================================================================
+# LiteLLM Settings
+# ============================================================================
+litellm_settings:
+  json_logs: true
+  detailed_debug: true
+  log_level: "DEBUG"
+  
+  # Max tokens per request
+  max_tokens: 2048
+  
+  # Retry configuration
+  num_retries: 2
+  request_timeout: 300

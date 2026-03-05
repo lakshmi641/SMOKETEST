@@ -1,0 +1,37 @@
+/* D3 Tree Org Chart Styles */
+.d3-tree-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: #f9fafb;
+}
+
+.d3-tree-container svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Node foreign object styling */
+.node-foreign-object {
+  pointer-events: all;
+  overflow: visible;
+}
+
+/* Ensure proper rendering of foreign objects */
+.node-foreign-object div {
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+/* Link styling */
+.d3-tree-container .rd3t-link {
+  stroke: #9ca3af;
+  stroke-width: 2;
+  fill: none;
+}
+
+/* Dark mode support */
+.dark .d3-tree-container {
+  background-color: #111827;
+}

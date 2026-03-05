@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: ceo-visibility-agent
+Version: 0.1.0
+Summary: CEO Visibility Agent - Agno agent for executive insights via Firestore + Cognee knowledge
+Author-email: Julley Platform <platform@julley.com>
+Requires-Python: >=3.12
+Requires-Dist: agno[postgres]>=2.5.5
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn[standard]>=0.30.0
+Requires-Dist: firebase-admin>=6.5.0
+Requires-Dist: redis>=5.0.0
+Requires-Dist: psycopg2-binary>=2.9.9
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydantic>=2.9.0
+Requires-Dist: pydantic-settings>=2.4.0
+Requires-Dist: python-dateutil>=2.9.0
+Requires-Dist: tenacity>=8.3.1
+Requires-Dist: python-dotenv>=1.0.1
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: ruff>=0.2.0; extra == "dev"
