@@ -13,23 +13,19 @@ from .firestore_client import FirestoreClient
 logger = logging.getLogger(__name__)
 
 
-async def get_strategic_health(company_id: str) -> StrategicHealth:
+async def get_strategic_health(agent: Any = None) -> StrategicHealth:
     """
     Calculate strategic health of the organization
-    
-    Aggregates:
-    - Task completion rate
-    - Project health
-    - Team capacity utilization
-    - Risk indicators
-    
-    Args:
-        company_id: Tenant identifier
-        
-    Returns:
-        StrategicHealth with score (0-100) and indicators
     """
     try:
+        # Extract company_id from agent context
+        company_id = None
+        if agent and hasattr(agent, "context"):
+            company_id = agent.context.get("company_id")
+            
+        if not company_id:
+            raise ValueError("company_id not found in agent context")
+
         client = FirestoreClient(company_id)
         
         # Fetch all needed data in parallel
@@ -133,11 +129,4 @@ def create_tool():
         "name": "get_strategic_health",
         "description": "Calculates strategic health of the organization based on task completion, project status, team capacity, and pending approvals.",
         "fn": get_strategic_health,
-        "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            }
-        }
     }

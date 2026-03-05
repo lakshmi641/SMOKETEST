@@ -21,12 +21,12 @@ settings = get_settings()
 def init_firebase():
     """Initialize Firebase Admin SDK using Application Default Credentials (ADC)"""
     try:
-        if not firebase_admin._apps:
-            # Use ADC (Workload Identity on GKE, Application Default on Cloud Run)
-            firebase_admin.initialize_app(
-                options={"projectId": settings.firebase_project_id}
-            )
-            logger.info(f"Firebase initialized for project: {settings.firebase_project_id}")
+        firebase_admin.get_app()
+    except ValueError:
+        firebase_admin.initialize_app(
+            options={"projectId": settings.firebase_project_id}
+        )
+        logger.info(f"Firebase initialized for project: {settings.firebase_project_id}")
     except Exception as e:
         logger.error(f"Failed to initialize Firebase: {str(e)}")
         raise

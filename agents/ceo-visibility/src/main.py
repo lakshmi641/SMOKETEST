@@ -148,10 +148,8 @@ async def agui_endpoint(request: Request):
             """Generate AG-UI SSE events"""
             try:
                 # Run agent asynchronously and stream the response.
-                # Pass `company_id` so the agent can provide it to tools.
                 response_stream = agent.arun(
                     latest_message,
-                    company_id=company_id,
                     stream=True,
                     stream_events=True,
                 )

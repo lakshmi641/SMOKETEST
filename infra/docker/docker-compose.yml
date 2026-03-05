@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================================================
   # PostgreSQL with pgvector extension
@@ -10,7 +8,7 @@ services:
     environment:
       POSTGRES_USER: cognee_user
       POSTGRES_PASSWORD: cognee_password_dev
-      POSTGRES_DB: cognee_db
+      POSTGRES_DB: agent_db
     ports:
       - "5432:5432"
     volumes:
@@ -91,8 +89,6 @@ services:
         condition: service_healthy
     networks:
       - agentic
-    profiles:
-      - full  # Run with: docker-compose --profile full up
 
   # ============================================================================
   # Cognee API Service (Shared Knowledge Service)
@@ -108,7 +104,7 @@ services:
       # Database
       COGNEE_DB_HOST: postgres
       COGNEE_DB_PORT: 5432
-      COGNEE_DB_NAME: cognee_db
+      COGNEE_DB_NAME: agent_db
       COGNEE_DB_USER: cognee_user
       COGNEE_DB_PASSWORD: cognee_password_dev
       # Redis

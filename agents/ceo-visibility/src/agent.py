@@ -7,21 +7,9 @@ import logging
 from typing import List, Optional
 from agno.agent import Agent
 from agno.models.openai import OpenAILike
-
-# Corrected Imports for Agno 2.5.6
-try:
-    from agno.storage.postgres import PostgresStorage
-except ImportError:
-    # If the above fails, Agno might be looking in the memory module
-    try:
-        from agno.memory.db.postgres import PostgresStorage
-    except ImportError:
-        raise ImportError("Could not find PostgresStorage. Please run: pip install 'agno[postgres]'")
-
-try:
-    from agno.memory.v2.db.redis import RedisMemoryDb
-except ImportError:
-    from agno.memory.db.redis import RedisMemoryDb
+from agno.storage.agent.postgres import PostgresStorage
+from agno.memory.agent import AgentMemory
+from agno.memory.db.redis import RedisMemoryDb
 
 from config import get_settings
 from auth import init_firebase
@@ -84,7 +72,9 @@ def create_ceo_agent(company_id: str, user_id: str) -> Agent:
             "Always fetch real-time data using tools before providing insights.",
             "Format responses with bold metrics and actionable summaries.",
         ],
-        memory=memory_obj,
+        # Inject company_id into context so tools can access it
+        context={"company_id": company_id},
+        memory=AgentMemory(db=memory_obj) if memory_obj else None,
         storage=PostgresStorage(
             db_url=settings.agno_db_url,
             table_name="ceo_agent_sessions",
