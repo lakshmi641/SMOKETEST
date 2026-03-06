@@ -4,12 +4,9 @@ Wires all tools and creates the CEO Visibility Agent
 """
 
 import logging
-from typing import List, Optional
 from agno.agent import Agent
 from agno.models.openai import OpenAILike
 from agno.db.postgres import PostgresDb
-from agno.memory.agent import AgentMemory
-from agno.memory.db.redis import RedisMemoryDb
 
 from config import get_settings
 from auth import init_firebase
@@ -25,35 +22,23 @@ from tools.workspace_performance import create_tool as create_workspace_performa
 from tools.knowledge_search import create_tool as create_knowledge_search_tool
 from tools.knowledge_add import create_tool as create_knowledge_add_tool
 
+
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+
 def create_ceo_agent(company_id: str, user_id: str) -> Agent:
-    """Configures the CEO Visibility Agent with tenant-scoped tools."""
+    """Configure the CEO Visibility Agent with tenant-scoped tools"""
 
-    # Tool wrappers are no longer needed. The agent will inject `company_id`
-    # into tools that require it when we pass it to `agent.arun()`.
-
-    # Setup Redis Memory
-    redis_url = f"redis://{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
-    if settings.redis_password:
-        redis_url = f"redis://:{settings.redis_password}@{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
-    
-    # Corrected session isolation in memory
-    memory_db = RedisMemoryDb(
-        redis_url=redis_url,
-        prefix=f"session:{company_id}:{user_id}",
-    )
-
-    # Create the Agent
     return Agent(
         name="CEO Visibility Agent",
+
         model=OpenAILike(
             id=settings.litellm_model,
             base_url=settings.litellm_url,
             api_key=settings.litellm_api_key,
         ),
-        # Use structured tool definitions for better LLM performance
+
         tools=[
             create_strategic_health_tool(),
             create_portfolio_status_tool(),
@@ -65,23 +50,31 @@ def create_ceo_agent(company_id: str, user_id: str) -> Agent:
             create_knowledge_search_tool(),
             create_knowledge_add_tool(),
         ],
+
         instructions=[
-            f"You are the CEO Visibility Agent for Julley Platform.",
-            f"Operating in context of company: {company_id}",
-            "Always fetch real-time data using tools before providing insights.",
-            "Format responses with bold metrics and actionable summaries.",
+            "You are the CEO Visibility Agent for Julley Platform.",
+            f"You operate in the context of company: {company_id}.",
+            "Always fetch real-time data using tools before answering.",
+            "Provide insights with clear metrics and actionable summaries.",
         ],
-        # Context is used to pass company_id to tools without LLM intervention
-        context={"company_id": company_id},
-        memory=AgentMemory(db=memory_db),
+
+        context={
+            "company_id": company_id,
+            "user_id": user_id,
+        },
+
         db=PostgresDb(
             db_url=settings.agno_db_url,
             table_name="ceo_agent_sessions",
         ),
+        enable_user_memories=True,
+
         show_tool_calls=True,
         markdown=True,
     )
 
+
 async def init_agent_system():
+    """Initialize required systems on startup"""
     init_firebase()
     logger.info("CEO Agent System Initialized")

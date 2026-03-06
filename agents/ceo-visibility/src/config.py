@@ -5,12 +5,17 @@ Loads settings from environment variables (GCP Secret Manager injected at runtim
 
 import os
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application configuration from environment variables"""
-    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
     # Firebase Configuration
     firebase_project_id: str = os.getenv("FIREBASE_PROJECT_ID", "julley-platform-dev")
     firebase_credentials_file: Optional[str] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -51,11 +56,6 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8080
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
 
 
 def get_settings() -> Settings:

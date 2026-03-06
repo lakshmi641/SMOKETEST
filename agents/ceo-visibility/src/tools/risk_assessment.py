@@ -5,8 +5,8 @@ Evaluates organizational risks
 
 import logging
 from typing import Any
-from ..models.schemas import RiskAssessment
-from .firestore_client import FirestoreClient
+from models.schemas import RiskAssessment
+from tools.firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,8 @@ async def get_risk_assessment(agent: Any = None) -> RiskAssessment:
         
         summary = f"Risk assessment score: {risk_score:.0f}/100 ({risk_category}). "
         if top_risks:
-            summary += f"Key concerns: {', '.join([f\"{r['count']} {r['type']}\".lower() for r in top_risks[:2]])}. "
+            parts = [f"{r['count']} {r['type']}".lower() for r in top_risks[:2]]
+            summary += f"Key concerns: {', '.join(parts)}. "
         else:
             summary += "No critical risks identified. "
         

@@ -2,8 +2,9 @@
 CEO Visibility Agent - FastAPI Server
 Exposes AG-UI endpoint for server-sent events (SSE) streaming
 """
-
 import logging
+
+print("CEO Visibility Agent: loading...", flush=True)
 import asyncio
 from typing import Optional
 from fastapi import FastAPI, Request, HTTPException, status
@@ -46,8 +47,8 @@ async def startup():
         await init_agent_system()
         logger.info("CEO Visibility Agent server started")
     except Exception as e:
-        logger.error(f"Startup error: {str(e)}")
-        raise
+        logger.exception("Startup error (server will run with limited auth/storage): %s", e)
+        # Do not re-raise so /health and other endpoints remain reachable
 
 
 @app.get("/health")

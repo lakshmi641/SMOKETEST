@@ -7,8 +7,8 @@ import logging
 from typing import Any, Optional
 import httpx
 
-from ..models.schemas import KnowledgeSearchResponse, KnowledgeSearchResult
-from ..config import get_settings
+from models.schemas import KnowledgeSearchResponse, KnowledgeSearchResult
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

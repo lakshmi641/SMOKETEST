@@ -143,11 +143,12 @@ services:
     ports:
       - "8081:8000"
     working_dir: /app/src
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    command: ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     env_file:
       - ../../agents/ceo-visibility/.env
     environment:
-      - PYTHONPATH=/root/.local/lib/python3.12/site-packages
+      - PYTHONPATH=/app/src:/root/.local/lib/python3.12/site-packages
+      - PYTHONUNBUFFERED=1
       - COGNEE_API_URL=http://cognee:8000
       - LITELLM_URL=http://litellm:8000
       - LITELLM_API_KEY=sk-litellm-dev-key

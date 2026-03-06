@@ -5,8 +5,8 @@ Tracks team capacity and resource allocation
 
 import logging
 from typing import Any
-from ..models.schemas import ResourceUtilization
-from .firestore_client import FirestoreClient
+from models.schemas import ResourceUtilization
+from tools.firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 

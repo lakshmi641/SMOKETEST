@@ -7,8 +7,8 @@ import logging
 from typing import Any
 from datetime import datetime, timedelta
 
-from ..models.schemas import DeliveryVelocity
-from .firestore_client import FirestoreClient
+from models.schemas import DeliveryVelocity
+from tools.firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 

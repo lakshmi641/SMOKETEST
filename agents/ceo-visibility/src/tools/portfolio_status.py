@@ -7,8 +7,8 @@ import logging
 from typing import Any
 from datetime import datetime
 
-from ..models.schemas import PortfolioStatus
-from .firestore_client import FirestoreClient
+from models.schemas import PortfolioStatus
+from tools.firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 

@@ -21,6 +21,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+    ENV PATH=/root/.local/bin:$PATH
 
 # Copy Python dependencies from builder
 COPY --from=builder /root/.local /root/.local

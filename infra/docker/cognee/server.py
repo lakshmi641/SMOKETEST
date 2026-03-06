@@ -283,12 +283,12 @@ async def search_knowledge(request: Request, payload: SearchRequest) -> SearchRe
         
         logger.info(f"Searching dataset {dataset_name} for: {payload.query}")
         
-        # Perform hybrid search via Cognee
+        # Perform hybrid search via Cognee (SDK uses query_text, top_k)
         # Cognee returns ranked results by relevance
         search_results = await cognee_agent.search(
-            query=payload.query,
+            query_text=payload.query,
             datasets=[dataset_name],
-            limit=payload.limit,
+            top_k=payload.limit,
         )
         
         # Format results

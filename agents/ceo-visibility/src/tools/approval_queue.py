@@ -5,8 +5,8 @@ Tracks pending approvals and blockers
 
 import logging
 from typing import Any
-from ..models.schemas import ApprovalQueueStatus
-from .firestore_client import FirestoreClient
+from models.schemas import ApprovalQueueStatus
+from tools.firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 

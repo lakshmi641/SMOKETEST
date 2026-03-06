@@ -6,8 +6,8 @@ Tracks health and metrics by workspace
 import logging
 from typing import Any, List
 from datetime import datetime
-from ..models.schemas import WorkspacePerformance
-from .firestore_client import FirestoreClient
+from models.schemas import WorkspacePerformance
+from tools.firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 
