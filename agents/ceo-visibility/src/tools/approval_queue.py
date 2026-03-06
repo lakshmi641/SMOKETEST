@@ -4,23 +4,24 @@ Tracks pending approvals and blockers
 """
 
 import logging
+from typing import Any
 from ..models.schemas import ApprovalQueueStatus
 from .firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 
 
-async def get_approval_queue(company_id: str) -> ApprovalQueueStatus:
+async def get_approval_queue(agent: Any = None) -> ApprovalQueueStatus:
     """
     Get current approval queue status
-    
-    Args:
-        company_id: Tenant identifier
-        
-    Returns:
-        ApprovalQueueStatus with pending counts and age
     """
     try:
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
+        if not company_id:
+            raise ValueError("Critical Error: company_id missing from agent context.")
+
         client = FirestoreClient(company_id)
         approvals = await client.get_approval_instances(status="pending")
         
@@ -71,11 +72,4 @@ def create_tool():
         "name": "get_approval_queue",
         "description": "Returns the status of pending approvals: total count, breakdown by type, oldest pending, and urgent items.",
         "fn": get_approval_queue,
-        "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            }
-        }
     }

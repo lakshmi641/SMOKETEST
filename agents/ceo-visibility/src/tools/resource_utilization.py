@@ -4,23 +4,24 @@ Tracks team capacity and resource allocation
 """
 
 import logging
+from typing import Any
 from ..models.schemas import ResourceUtilization
 from .firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 
 
-async def get_resource_utilization(company_id: str) -> ResourceUtilization:
+async def get_resource_utilization(agent: Any = None) -> ResourceUtilization:
     """
     Calculate resource utilization across the organization
-    
-    Args:
-        company_id: Tenant identifier
-        
-    Returns:
-        ResourceUtilization with capacity metrics
     """
     try:
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
+        if not company_id:
+            raise ValueError("Critical Error: company_id missing from agent context.")
+
         client = FirestoreClient(company_id)
         
         # Fetch data
@@ -77,11 +78,4 @@ def create_tool():
         "name": "get_resource_utilization",
         "description": "Calculates resource utilization: team capacity, allocation rate, idle resources, and over-allocation.",
         "fn": get_resource_utilization,
-        "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            }
-        }
     }

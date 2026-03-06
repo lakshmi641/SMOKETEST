@@ -4,23 +4,24 @@ Evaluates organizational risks
 """
 
 import logging
+from typing import Any
 from ..models.schemas import RiskAssessment
 from .firestore_client import FirestoreClient
 
 logger = logging.getLogger(__name__)
 
 
-async def get_risk_assessment(company_id: str) -> RiskAssessment:
+async def get_risk_assessment(agent: Any = None) -> RiskAssessment:
     """
     Assess organizational risks based on project and task data
-    
-    Args:
-        company_id: Tenant identifier
-        
-    Returns:
-        RiskAssessment with risk score and top risks
     """
     try:
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
+        if not company_id:
+            raise ValueError("Critical Error: company_id missing from agent context.")
+
         client = FirestoreClient(company_id)
         
         # Fetch relevant data
@@ -102,11 +103,4 @@ def create_tool():
         "name": "get_risk_assessment",
         "description": "Evaluates organizational risks including at-risk projects, overdue tasks, and stalled work.",
         "fn": get_risk_assessment,
-        "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            }
-        }
     }

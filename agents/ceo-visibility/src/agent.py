@@ -7,7 +7,7 @@ import logging
 from typing import List, Optional
 from agno.agent import Agent
 from agno.models.openai import OpenAILike
-from agno.storage.agent.postgres import PostgresStorage
+from agno.db.postgres import PostgresDb
 from agno.memory.agent import AgentMemory
 from agno.memory.db.redis import RedisMemoryDb
 
@@ -39,12 +39,11 @@ def create_ceo_agent(company_id: str, user_id: str) -> Agent:
     if settings.redis_password:
         redis_url = f"redis://:{settings.redis_password}@{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
     
-    memory_obj = None
-    if RedisMemoryDb:
-        memory_obj = RedisMemoryDb(
-            redis_url=redis_url,
-            prefix=f"session:{company_id}:ceo-agent:{user_id}",
-        )
+    # Corrected session isolation in memory
+    memory_db = RedisMemoryDb(
+        redis_url=redis_url,
+        prefix=f"session:{company_id}:{user_id}",
+    )
 
     # Create the Agent
     return Agent(
@@ -72,10 +71,10 @@ def create_ceo_agent(company_id: str, user_id: str) -> Agent:
             "Always fetch real-time data using tools before providing insights.",
             "Format responses with bold metrics and actionable summaries.",
         ],
-        # Inject company_id into context so tools can access it
+        # Context is used to pass company_id to tools without LLM intervention
         context={"company_id": company_id},
-        memory=AgentMemory(db=memory_obj) if memory_obj else None,
-        storage=PostgresStorage(
+        memory=AgentMemory(db=memory_db),
+        db=PostgresDb(
             db_url=settings.agno_db_url,
             table_name="ceo_agent_sessions",
         ),

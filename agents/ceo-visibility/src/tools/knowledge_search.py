@@ -15,22 +15,20 @@ settings = get_settings()
 
 
 async def search_knowledge(
-    company_id: str,
     query: str,
     limit: int = 5,
+    agent: Any = None,
 ) -> KnowledgeSearchResponse:
     """
     Search company knowledge base via Cognee API
-    
-    Args:
-        company_id: Tenant identifier (scopes search to dataset=tenant_{company_id})
-        query: Search query
-        limit: Max results to return
-        
-    Returns:
-        KnowledgeSearchResponse with ranked results
     """
     try:
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
+        if not company_id:
+            raise ValueError("Critical Error: company_id missing from agent context.")
+
         # Call Cognee API
         async with httpx.AsyncClient() as client:
             cognee_url = f"{settings.cognee_api_url}/api/v1/search"
@@ -94,11 +92,6 @@ def create_tool():
         "description": "Search the company knowledge base for information. Uses hybrid search (vector + full-text) across ingested documents.",
         "fn": search_knowledge,
         "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            },
             "query": {
                 "type": "string",
                 "description": "Search query",

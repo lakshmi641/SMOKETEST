@@ -4,7 +4,7 @@ Tracks health and metrics by workspace
 """
 
 import logging
-from typing import List
+from typing import Any, List
 from datetime import datetime
 from ..models.schemas import WorkspacePerformance
 from .firestore_client import FirestoreClient
@@ -12,17 +12,17 @@ from .firestore_client import FirestoreClient
 logger = logging.getLogger(__name__)
 
 
-async def get_workspace_performance(company_id: str) -> dict:
+async def get_workspace_performance(agent: Any = None) -> dict:
     """
     Get performance metrics for all workspaces
-    
-    Args:
-        company_id: Tenant identifier
-        
-    Returns:
-        Dict with workspace performance breakdown
     """
     try:
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
+        if not company_id:
+            raise ValueError("Critical Error: company_id missing from agent context.")
+
         client = FirestoreClient(company_id)
         
         # Fetch data
@@ -86,11 +86,4 @@ def create_tool():
         "name": "get_workspace_performance",
         "description": "Returns performance metrics for all workspaces including task counts, completion rates, and team utilization.",
         "fn": get_workspace_performance,
-        "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            }
-        }
     }

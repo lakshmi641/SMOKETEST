@@ -4,7 +4,7 @@ Ingests documents into the Cognee knowledge base
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 import httpx
 
 from ..config import get_settings
@@ -14,26 +14,22 @@ settings = get_settings()
 
 
 async def add_knowledge(
-    company_id: str,
     content: str,
     document_name: str,
     document_type: str = "text",
     metadata: Optional[dict] = None,
+    agent: Any = None,
 ) -> dict:
     """
     Ingest a document into the knowledge base
-    
-    Args:
-        company_id: Tenant identifier
-        content: Document content (text)
-        document_name: Name/title of document
-        document_type: Type of document (text, pdf, docx, etc.)
-        metadata: Optional dict with additional metadata
-        
-    Returns:
-        Dict with ingestion status
     """
     try:
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
+        if not company_id:
+            raise ValueError("Critical Error: company_id missing from agent context.")
+
         # Call Cognee API to add document
         async with httpx.AsyncClient() as client:
             cognee_url = f"{settings.cognee_api_url}/api/v1/add"
@@ -139,14 +135,9 @@ def create_tool():
         "description": "Ingests a new document into the company knowledge base. The document is automatically processed for chunking and embedding.",
         "fn": add_knowledge,
         "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            },
             "content": {
                 "type": "string",
-                "description": "Document content",
+                "description": "The text content of the document to add",
                 "required": True,
             },
             "document_name": {

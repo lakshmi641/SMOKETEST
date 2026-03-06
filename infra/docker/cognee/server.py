@@ -6,6 +6,7 @@ Provides document ingestion, processing, and hybrid search capabilities
 
 import os
 import logging
+import time
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -162,6 +163,7 @@ async def add_document(request: Request, payload: AddDocumentRequest):
         # Add document to Cognee (this persists to PostgreSQL)
         # Note: cognee.add_data_source() is async in newer versions
         document_id = await cognee_agent.add_data_source(
+            dataset_id=dataset_name,
             data_source_type="text",
             data_source_value=payload.content,
             metadata={
@@ -215,11 +217,10 @@ async def cognify_dataset(request: Request, payload: CognifyRequest):
         
         # Cognify dataset (chunk + embed + extract)
         # This runs the data processing pipeline
-        import time
         start_time = time.time()
         
         await cognee_agent.cognify(
-            dataset_id=dataset_name,
+            dataset_ids=[dataset_name],
             chunk_size=payload.chunk_size or settings.cognee_max_chunk_size,
             chunk_overlap=payload.overlap,
         )
@@ -286,7 +287,7 @@ async def search_knowledge(request: Request, payload: SearchRequest) -> SearchRe
         # Cognee returns ranked results by relevance
         search_results = await cognee_agent.search(
             query=payload.query,
-            dataset_id=dataset_name,
+            datasets=[dataset_name],
             limit=payload.limit,
         )
         

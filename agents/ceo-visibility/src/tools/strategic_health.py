@@ -15,16 +15,14 @@ logger = logging.getLogger(__name__)
 
 async def get_strategic_health(agent: Any = None) -> StrategicHealth:
     """
-    Calculate strategic health of the organization
+    Calculate organizational health using context-injected company_id.
     """
     try:
-        # Extract company_id from agent context
-        company_id = None
-        if agent and hasattr(agent, "context"):
-            company_id = agent.context.get("company_id")
-            
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
         if not company_id:
-            raise ValueError("company_id not found in agent context")
+            raise ValueError("Critical Error: company_id missing from agent context.")
 
         client = FirestoreClient(company_id)
         

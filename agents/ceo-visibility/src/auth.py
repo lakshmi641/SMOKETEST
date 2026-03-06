@@ -19,14 +19,16 @@ settings = get_settings()
 
 # Initialize Firebase Admin SDK
 def init_firebase():
-    """Initialize Firebase Admin SDK using Application Default Credentials (ADC)"""
+    """Initialize Firebase Admin SDK safely"""
     try:
+        # Check if app is already initialized
         firebase_admin.get_app()
     except ValueError:
+        # If not, initialize with Application Default Credentials
         firebase_admin.initialize_app(
             options={"projectId": settings.firebase_project_id}
         )
-        logger.info(f"Firebase initialized for project: {settings.firebase_project_id}")
+        logger.info(f"Firebase initialized for: {settings.firebase_project_id}")
     except Exception as e:
         logger.error(f"Failed to initialize Firebase: {str(e)}")
         raise

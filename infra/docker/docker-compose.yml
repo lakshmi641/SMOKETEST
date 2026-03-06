@@ -3,7 +3,7 @@ services:
   # PostgreSQL with pgvector extension
   # ============================================================================
   postgres:
-    image: pgvector/pgvector:pg16-latest
+    image: pgvector/pgvector:pg16
     container_name: cognee_postgres
     environment:
       POSTGRES_USER: cognee_user
@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cognee_user"]
+      test: ["CMD-SHELL", "pg_isready -U cognee_user -d agent_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,12 +31,12 @@ services:
       REDIS_PASSWORD: redis_password_dev
     ports:
       - "6379:6379"
-      - "8001:8001"  # Redis Insight UI
+      - "8001:8001" 
     volumes:
       - redis_data:/data
     command: redis-server --requirepass redis_password_dev
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "redis_password_dev", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -44,7 +44,7 @@ services:
       - agentic
 
   # ============================================================================
-  # Ollama (LLM + Embeddings - local, fallback)
+  # Ollama (Local LLM Engine)
   # ============================================================================
   ollama:
     image: ollama/ollama:latest
@@ -53,45 +53,52 @@ services:
       - "11434:11434"
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=*
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
       timeout: 10s
-      retries: 3
+      retries: 10
+      start_period: 60s
     networks:
       - agentic
-    # Pre-pull models on startup (optional, takes time on first run)
-    # command: ollama pull llama2 && ollama pull nomic-embed-text
 
   # ============================================================================
-  # LiteLLM Proxy (Embeddings + LLM routing: Gemini primary + Ollama fallback)
+  # LiteLLM Proxy (Model Router) - ADDED HEALTHCHECK
   # ============================================================================
   litellm:
     image: litellm/litellm:latest
     container_name: cognee_litellm
     ports:
       - "8000:8000"
+    env_file:
+      - ../../agents/ceo-visibility/.env
     environment:
       - LITELLM_MASTER_KEY=sk-litellm-dev-key
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-api-key-here}
       - LOG_LEVEL=debug
     volumes:
       - ./litellm_config.yml:/app/config.yml:ro
-    command: litellm --config /app/config.yml --port 8000
+    command: --config /app/config.yml --port 8000
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health/readiness\")' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       ollama:
-        condition: service_healthy
+        condition: service_started
     networks:
       - agentic
 
   # ============================================================================
-  # Cognee API Service (Shared Knowledge Service)
+  # Cognee API Service - FIXED VALIDATION ERRORS
   # ============================================================================
   cognee:
     build:
@@ -101,26 +108,18 @@ services:
     ports:
       - "8080:8000"
     environment:
-      # Database
       COGNEE_DB_HOST: postgres
       COGNEE_DB_PORT: 5432
       COGNEE_DB_NAME: agent_db
       COGNEE_DB_USER: cognee_user
       COGNEE_DB_PASSWORD: cognee_password_dev
-      # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: redis_password_dev
       REDIS_DB: 0
-      # LiteLLM (Gemini primary + Ollama fallback)
       LITELLM_URL: http://litellm:8000
       LITELLM_API_KEY: sk-litellm-dev-key
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-your-gemini-api-key-here}
-      # Cognee SDK
-      COGNEE_MAX_CHUNK_SIZE: 2000
-      COGNEE_BATCH_SIZE: 50
-      COGNEE_TIMEOUT: 300
-      LOG_LEVEL: DEBUG
+      # Removed extra keys that caused Pydantic ValidationError
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,16 +127,13 @@ services:
         condition: service_healthy
       litellm:
         condition: service_started
-      ollama:
-        condition: service_healthy
     volumes:
       - ./cognee:/app
-    command: python -m uvicorn server:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - agentic
 
   # ============================================================================
-  # CEO Visibility Agent Service (Agno + Firestore + Cognee)
+  # CEO Agent Service
   # ============================================================================
   ceo-agent:
     build:
@@ -146,38 +142,25 @@ services:
     container_name: ceo_agent
     ports:
       - "8081:8000"
+    env_file:
+      - ../../agents/ceo-visibility/.env
     environment:
-      # Cognee API
       COGNEE_API_URL: http://cognee:8000
-      # LiteLLM (Gemini primary + Ollama fallback)
       LITELLM_URL: http://litellm:8000
       LITELLM_API_KEY: sk-litellm-dev-key
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-your-gemini-api-key-here}
-      # Redis (agent session memory)
+      DATABASE_URL: postgresql://cognee_user:cognee_password_dev@postgres:5432/agent_db
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: redis_password_dev
-      REDIS_DB: 1
-      # PostgreSQL (agent chat history)
-      DATABASE_URL: postgresql://cognee_user:cognee_password_dev@postgres:5432/agent_db
-      # Agent config
-      AGENT_NAME: ceo-visibility-agent
-      AGENT_MODEL: gemini-flash
-      LOG_LEVEL: DEBUG
     depends_on:
       cognee:
-        condition: service_started
-      postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       litellm:
         condition: service_started
-      ollama:
+      postgres:
         condition: service_healthy
     volumes:
       - ../../agents/ceo-visibility:/app
-    command: python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - agentic
 
@@ -187,8 +170,5 @@ networks:
 
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
   ollama_data:
-    driver: local

@@ -13,17 +13,17 @@ from .firestore_client import FirestoreClient
 logger = logging.getLogger(__name__)
 
 
-async def get_portfolio_status(company_id: str) -> PortfolioStatus:
+async def get_portfolio_status(agent: Any = None) -> PortfolioStatus:
     """
     Get portfolio overview: project count, health, distribution
-    
-    Args:
-        company_id: Tenant identifier
-        
-    Returns:
-        PortfolioStatus with project metrics
     """
     try:
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
+        if not company_id:
+            raise ValueError("Critical Error: company_id missing from agent context.")
+
         client = FirestoreClient(company_id)
         projects = await client.get_projects()
         
@@ -61,11 +61,4 @@ def create_tool():
         "name": "get_portfolio_status",
         "description": "Returns overview of the project portfolio: total projects, active, completed, and at-risk counts with overall health score.",
         "fn": get_portfolio_status,
-        "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            }
-        }
     }

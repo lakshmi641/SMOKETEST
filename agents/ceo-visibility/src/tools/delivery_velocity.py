@@ -13,17 +13,17 @@ from .firestore_client import FirestoreClient
 logger = logging.getLogger(__name__)
 
 
-async def get_delivery_velocity(company_id: str) -> DeliveryVelocity:
+async def get_delivery_velocity(agent: Any = None) -> DeliveryVelocity:
     """
     Calculate delivery velocity: tasks completed over time
-    
-    Args:
-        company_id: Tenant identifier
-        
-    Returns:
-        DeliveryVelocity with completion metrics and trends
     """
     try:
+        # Extract company_id from the agent context provided by Agno
+        company_id = agent.context.get("company_id") if agent and agent.context else None
+
+        if not company_id:
+            raise ValueError("Critical Error: company_id missing from agent context.")
+
         client = FirestoreClient(company_id)
         
         # Fetch completed tasks for the last 7 and 30 days
@@ -89,11 +89,4 @@ def create_tool():
         "name": "get_delivery_velocity",
         "description": "Calculates team delivery velocity: tasks completed per week/month, average completion time, velocity trend, and workload capacity.",
         "fn": get_delivery_velocity,
-        "args": {
-            "company_id": {
-                "type": "string",
-                "description": "Company/tenant ID",
-                "required": True,
-            }
-        }
     }
