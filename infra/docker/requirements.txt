@@ -11,4 +11,5 @@ python-dateutil>=2.9.0
 tenacity>=8.3.0
 python-dotenv>=1.0.1
 agno>=2.5.5
-openai
+openai>=1.30.0
+cognee[postgres]>=0.3.2
